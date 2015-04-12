@@ -154,11 +154,30 @@ Quark {
 		Error("Cannot parse dependency:" + this + dep).throw;
 	}
 
+	*splitRefspec {
+		|name|
+		var splitName = name.split($@);
+		if(splitName.size() == 2) {
+			^splitName;
+		} {
+			^nil;
+		}
+	}
+
 	*parseQuarkName { |name, refspec|
 		// determine which quark the string 'name' refers to
 		// and return name, url, refspec, localPath
 		// name is one of: quarkname, url, localPath
-		var directoryEntry;
+		var directoryEntry, urlRefspec;
+		urlRefspec = this.splitRefspec(name);
+		if (urlRefspec.notNil) {
+			if (refspec.notNil && (refspec != urlRefspec[1])) {
+				Error("Url refspec (%) does not match refspec argument (%)").throw;
+			} {
+				#name, refspec = urlRefspec;
+			}
+		};
+
 		if(name.contains("://"), {
 			^[PathName(name).fileNameWithoutExtension(), name, refspec, nil]
 		});
