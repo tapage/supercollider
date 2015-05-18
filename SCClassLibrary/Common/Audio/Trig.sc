@@ -180,12 +180,21 @@ Phasor : UGen {
 		^this.multiNew('control', trig, rate, start, end, resetPos)
 	}
 	checkInputs {
-		if (rate !== inputs.at(1).rate) {
- 			^("rate input is not" + rate + "rate: " + inputs.at(0) + inputs.at(0).rate);
- 		};
-		if (inputs.at(2).rate == \audio or: { inputs.at(3).rate == \audio } and: { inputs.at(2).rate != inputs.at(3).rate }) {
-			^("start and end inputs don't have matching rates:" + inputs.at(2).rate + " vs. " inputs.at(3).rate);
+		if(inputs.at(4).rate == \audio) {
+			^"audio rate resetPos not supported"
 		};
+		if(inputs.at(1).rate == \audio and: { inputs.at(0).rate != \audio }) {
+			^"trig and rate must have matching rates"
+		};
+		if(rate != \audio) {
+			if(inputs[1..].any { |in| in.rate == \audio }) {
+				^"arguments cannot be audio rate inputs" + inputs
+			}
+		};
+		if (inputs.at(2).rate == \audio or: { inputs.at(3).rate == \audio } and: { inputs.at(2).rate != inputs.at(3).rate }) {
+			^("start and end inputs don't have matching rates:" + inputs.at(2).rate + " vs. " + inputs.at(3).rate)
+		};
+		^this.checkValidInputs
 	}
 }
 
