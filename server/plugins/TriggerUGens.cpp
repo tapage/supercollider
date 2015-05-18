@@ -1987,7 +1987,6 @@ void Phasor_next_aa_aa(Phasor *unit, int inNumSamples)
 		  double zrate = ZXP(rate);
 		  double curstart = (double) ZXP(start);
 		  double curend = (double) ZXP(end);
-		  float curreset = ZXP(resetPos);
 		  if (previn <= 0.f && curin > 0.f) {
 			  float frac = 1.f - previn/(curin-previn);
 			  level = resetPos + frac * zrate;
