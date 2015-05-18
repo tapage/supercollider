@@ -179,6 +179,14 @@ Phasor : UGen {
 	*kr { arg trig = 0.0, rate = 1.0, start = 0.0, end = 1.0, resetPos = 0.0;
 		^this.multiNew('control', trig, rate, start, end, resetPos)
 	}
+	checkInputs {
+		if (rate !== inputs.at(1).rate) {
+ 			^("rate input is not" + rate + "rate: " + inputs.at(0) + inputs.at(0).rate);
+ 		};
+		if (inputs.at(2).rate == \audio or: { inputs.at(3).rate == \audio } and: { inputs.at(2).rate != inputs.at(3).rate }) {
+			^("start and end inputs don't have matching rates:" + inputs.at(2).rate + " vs. " inputs.at(3).rate);
+		};
+	}
 }
 
 PeakFollower : UGen {

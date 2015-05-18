@@ -1945,7 +1945,7 @@ void Phasor_next_ak_aa(Phasor *unit, int inNumSamples)
 	double rate      = ZIN0(1);
 	float *start     = ZIN(2);
 	float *end       = ZIN(3);
-	float *resetPos  = ZIN(4);
+	float resetPos  = ZIN0(4);
 	
 	float previn = unit->m_previn;
 	double level  = unit->mLevel;
@@ -1954,10 +1954,9 @@ void Phasor_next_ak_aa(Phasor *unit, int inNumSamples)
 		  float curin = ZXP(in);
 		  double curstart = (double) ZXP(start);
 		  double curend = (double) ZXP(end);
-		  float curreset = ZXP(resetPos);
 		  if (previn <= 0.f && curin > 0.f) {
 			  float frac = 1.f - previn/(curin-previn);
-			  level = curreset + frac * rate;
+			  level = resetPos + frac * rate;
 		  }
 		  ZXP(out) = level;
 		  level += rate;
@@ -1978,7 +1977,7 @@ void Phasor_next_aa_aa(Phasor *unit, int inNumSamples)
 	float *rate     = ZIN(1);
 	float *start     = ZIN(2);
 	float *end       = ZIN(3);
-	float *resetPos  = ZIN(4);
+	float resetPos  = ZIN0(4);
 
 	float previn = unit->m_previn;
 	double level = unit->mLevel;
@@ -1991,7 +1990,7 @@ void Phasor_next_aa_aa(Phasor *unit, int inNumSamples)
 		  float curreset = ZXP(resetPos);
 		  if (previn <= 0.f && curin > 0.f) {
 			  float frac = 1.f - previn/(curin-previn);
-			  level = curreset + frac * zrate;
+			  level = resetPos + frac * zrate;
 		  }
 		  ZXP(out) = level;
 		  level += zrate;
