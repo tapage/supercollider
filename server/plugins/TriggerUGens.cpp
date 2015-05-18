@@ -306,8 +306,11 @@ extern "C"
 	void Phasor_next_kk(Phasor *unit, int inNumSamples);
 	void Phasor_next_ak(Phasor *unit, int inNumSamples);
 	void Phasor_next_aa(Phasor *unit, int inNumSamples);
-	void Phasor_next_aaa(Phasor *unit, int inNumSamples);
-
+	void Phasor_next_aa_aa(Phasor *unit, int inNumSamples);
+	void Phasor_next_aa_ak(Phasor *unit, int inNumSamples);
+	void Phasor_next_kk_ak(Phasor *unit, int inNumSamples);
+	void Phasor_next_ak_aa(Phasor *unit, int inNumSamples);
+	
 	void Peak_Ctor(Peak *unit);
 	void Peak_next_ak(Peak *unit, int inNumSamples);
 	void Peak_next_ai(Peak *unit, int inNumSamples);
@@ -1786,23 +1789,31 @@ void Sweep_next_aa(Sweep *unit, int inNumSamples)
 void Phasor_Ctor(Phasor *unit)
 {
 	if (unit->mCalcRate == calc_FullRate) {
-		if (INRATE(0) == calc_FullRate) { // trigger
+		if (INRATE(0) == calc_FullRate) {
 			if (INRATE(1) == calc_FullRate) {
 				if (INRATE(2) == calc_FullRate) {
-					SETCALC(Phasor_next_aaa);
-					// todo: SETCALC(Phasor_next_aa_aa);
+					SETCALC(Phasor_next_aa_aa);
+					printf("Phasor_next_aa_aa\n");
 				} else {
-					SETCALC(Phasor_next_aa);
-					// todo: SETCALC(Phasor_next_aa_ak);
+					SETCALC(Phasor_next_aa_ak);
+					printf("Phasor_next_aa_ak\n");
 				}
 			} else {
-				// todo: SETCALC(Phasor_next_ak_aa);
-				// SETCALC(Phasor_next_ak_ak);
-				SETCALC(Phasor_next_ak);
+				if (INRATE(2) == calc_FullRate) {
+					SETCALC(Phasor_next_ak_aa);
+					printf("Phasor_next_ak_aa\n");
+				} else {
+					SETCALC(Phasor_next_ak);
+					printf("Phasor_next_ak\n");
+				};
 			}
 		} else {
-			SETCALC(Phasor_next_kk);
-			// todo: SETCALC(Phasor_next_kk_ak); // resetPos is kr, because trigger is kr. But needs a check.
+			if (INRATE(2) == calc_FullRate) {
+				SETCALC(Phasor_next_kk_ak);
+				printf("Phasor_next_kk_ak\n");
+			} else {
+				SETCALC(Phasor_next_kk);
+			}
 		}
 	} else {
 		SETCALC(Phasor_next_ak);
@@ -1897,7 +1908,70 @@ void Phasor_next_aa(Phasor *unit, int inNumSamples)
 	unit->mLevel = level;
 }
 
-void Phasor_next_aaa(Phasor *unit, int inNumSamples)
+void Phasor_next_kk_ak(Phasor *unit, int inNumSamples)
+{
+	float *out = ZOUT(0);
+	
+	float in        = ZIN0(0);
+	double rate      = ZIN0(1);
+	float *start     = ZIN(2);
+	float *end       = ZIN(3);
+	float resetPos  = ZIN0(4);
+	
+	float previn = unit->m_previn;
+	double level  = unit->mLevel;
+	
+	if (previn <= 0.f && in > 0.f) {
+		level = resetPos;
+	}
+	LOOP1(inNumSamples,
+		  double curstart = (double) ZXP(start);
+		  double curend = (double) ZXP(end);
+		  level = sc_wrap(level, curstart, curend);
+		  ZXP(out) = level;
+		  level += rate;
+		  );
+	
+	unit->m_previn = in;
+	unit->mLevel = level;
+}
+
+
+void Phasor_next_ak_aa(Phasor *unit, int inNumSamples)
+{
+	float *out = ZOUT(0);
+	
+	float *in       = ZIN(0);
+	double rate      = ZIN0(1);
+	float *start     = ZIN(2);
+	float *end       = ZIN(3);
+	float *resetPos  = ZIN(4);
+	
+	float previn = unit->m_previn;
+	double level  = unit->mLevel;
+	
+	LOOP1(inNumSamples,
+		  float curin = ZXP(in);
+		  double curstart = (double) ZXP(start);
+		  double curend = (double) ZXP(end);
+		  float curreset = ZXP(resetPos);
+		  if (previn <= 0.f && curin > 0.f) {
+			  float frac = 1.f - previn/(curin-previn);
+			  level = curreset + frac * rate;
+		  }
+		  ZXP(out) = level;
+		  level += rate;
+		  level = sc_wrap(level, curstart, curend);
+		  
+		  previn = curin;
+		  );
+	
+	unit->m_previn = previn;
+	unit->mLevel = level;
+}
+
+
+void Phasor_next_aa_aa(Phasor *unit, int inNumSamples)
 {
 	float *out = ZOUT(0);
 	float *in       = ZIN(0);
@@ -1928,6 +2002,39 @@ void Phasor_next_aaa(Phasor *unit, int inNumSamples)
 	unit->m_previn = previn;
 	unit->mLevel = level;
 }
+
+void Phasor_next_aa_ak(Phasor *unit, int inNumSamples)
+{
+	float *out = ZOUT(0);
+	float *in       = ZIN(0);
+	float *rate     = ZIN(1);
+	float *start     = ZIN(2);
+	float *end       = ZIN(3);
+	float resetPos  = ZIN0(4);
+	
+	float previn = unit->m_previn;
+	double level = unit->mLevel;
+	
+	LOOP1(inNumSamples,
+		  float curin = ZXP(in);
+		  double zrate = ZXP(rate);
+		  double curstart = (double) ZXP(start);
+		  double curend = (double) ZXP(end);
+		  if (previn <= 0.f && curin > 0.f) {
+			  float frac = 1.f - previn/(curin-previn);
+			  level = resetPos + frac * zrate;
+		  }
+		  ZXP(out) = level;
+		  level += zrate;
+		  level = sc_wrap(level, curstart, curend);
+		  previn = curin;
+		  );
+	
+	unit->m_previn = previn;
+	unit->mLevel = level;
+}
+
+
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
