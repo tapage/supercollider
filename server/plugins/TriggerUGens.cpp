@@ -306,6 +306,7 @@ extern "C"
 	void Phasor_next_kk(Phasor *unit, int inNumSamples);
 	void Phasor_next_ak(Phasor *unit, int inNumSamples);
 	void Phasor_next_aa(Phasor *unit, int inNumSamples);
+	void Phasor_next_aaa(Phasor *unit, int inNumSamples);
 
 	void Peak_Ctor(Peak *unit);
 	void Peak_next_ak(Peak *unit, int inNumSamples);
@@ -1785,14 +1786,23 @@ void Sweep_next_aa(Sweep *unit, int inNumSamples)
 void Phasor_Ctor(Phasor *unit)
 {
 	if (unit->mCalcRate == calc_FullRate) {
-		if (INRATE(0) == calc_FullRate) {
+		if (INRATE(0) == calc_FullRate) { // trigger
 			if (INRATE(1) == calc_FullRate) {
-				SETCALC(Phasor_next_aa);
+				if (INRATE(2) == calc_FullRate) {
+					SETCALC(Phasor_next_aaa);
+					// todo: SETCALC(Phasor_next_aa_aa);
+				} else {
+					SETCALC(Phasor_next_aa);
+					// todo: SETCALC(Phasor_next_aa_ak);
+				}
 			} else {
+				// todo: SETCALC(Phasor_next_ak_aa);
+				// SETCALC(Phasor_next_ak_ak);
 				SETCALC(Phasor_next_ak);
 			}
 		} else {
 			SETCALC(Phasor_next_kk);
+			// todo: SETCALC(Phasor_next_kk_ak); // resetPos is kr, because trigger is kr. But needs a check.
 		}
 	} else {
 		SETCALC(Phasor_next_ak);
@@ -1886,6 +1896,39 @@ void Phasor_next_aa(Phasor *unit, int inNumSamples)
 	unit->m_previn = previn;
 	unit->mLevel = level;
 }
+
+void Phasor_next_aaa(Phasor *unit, int inNumSamples)
+{
+	float *out = ZOUT(0);
+	float *in       = ZIN(0);
+	float *rate     = ZIN(1);
+	float *start     = ZIN(2);
+	float *end       = ZIN(3);
+	float *resetPos  = ZIN(4);
+
+	float previn = unit->m_previn;
+	double level = unit->mLevel;
+
+	LOOP1(inNumSamples,
+		  float curin = ZXP(in);
+		  double zrate = ZXP(rate);
+		  double curstart = (double) ZXP(start);
+		  double curend = (double) ZXP(end);
+		  float curreset = ZXP(resetPos);
+		  if (previn <= 0.f && curin > 0.f) {
+			  float frac = 1.f - previn/(curin-previn);
+			  level = curreset + frac * zrate;
+		  }
+		  ZXP(out) = level;
+		  level += zrate;
+		  level = sc_wrap(level, curstart, curend);
+		  previn = curin;
+		  );
+
+	unit->m_previn = previn;
+	unit->mLevel = level;
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
