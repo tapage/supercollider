@@ -55,7 +55,11 @@ class DocumentSelectPopUp : public QDialog
 {
 public:
     DocumentSelectPopUp(const CodeEditorBox::History & history, QWidget * parent):
+    #ifndef Q_OS_MAC
+        QDialog(parent, Qt::Popup  | Qt::FramelessWindowHint)
+    #else
         QDialog(parent, Qt::Dialog | Qt::FramelessWindowHint)
+    #endif
     {
         mModel = new QStandardItemModel(this);
         populateModel(history);
@@ -464,6 +468,15 @@ void MultiEditor::createActions()
     mEditorSigMux->connect(action, SIGNAL(triggered()), SLOT(moveLineDown()));
     settings->addAction( action, "editor-move-line-down", editorCategory);
 
+    mActions[DeleteWord] = action = new QAction(
+        QIcon::fromTheme("edit-deleteword"), tr("Delete Word"), this);
+#ifdef Q_OS_MAC
+    action->setShortcut(tr("Meta+W", "Delete Word"));
+#endif
+    action->setShortcutContext(Qt::WidgetWithChildrenShortcut);
+    mEditorSigMux->connect(action, SIGNAL(triggered()), SLOT(deleteWord()));
+    settings->addAction(action, "delete-word", editorCategory);
+
     mActions[GotoPreviousBlock] = action = new QAction(
         QIcon::fromTheme("edit-gotopreviousblock"), tr("Go to Previous Block"), this);
     action->setShortcut(tr("Ctrl+[", "Go to Previous Block"));
@@ -683,6 +696,7 @@ void MultiEditor::createActions()
     addAction(mActions[CopyLineDown]);
     addAction(mActions[MoveLineUp]);
     addAction(mActions[MoveLineDown]);
+    addAction(mActions[DeleteWord]);
     addAction(mActions[GotoPreviousBlock]);
     addAction(mActions[GotoNextBlock]);
     addAction(mActions[SelectEnclosingBlock]);
@@ -709,6 +723,7 @@ void MultiEditor::updateActions()
     mActions[CopyLineDown]->setEnabled( editor );
     mActions[MoveLineUp]->setEnabled( editor );
     mActions[MoveLineDown]->setEnabled( editor );
+    mActions[DeleteWord]->setEnabled( editor );
     mActions[GotoPreviousEmptyLine]->setEnabled( editor );
     mActions[GotoNextEmptyLine]->setEnabled( editor );
     mActions[DocClose]->setEnabled( editor );
@@ -1021,7 +1036,7 @@ void MultiEditor::onDocModified( QObject *object )
     if(isModified)
         icon = mDocModifiedIcon;
 
-    Main::evaluateCodeIfCompiled(QString("Document.findByQUuid(\'%1\').prSetEdited(%2)").arg(doc->id().constData()).arg(isModified), true);
+    Main::evaluateCodeIfCompiled(QStringLiteral("Document.findByQUuid(\'%1\').prSetEdited(%2)").arg(doc->id().constData()).arg(isModified), true);
     
     mTabs->setTabIcon( tabIdx, icon );
 }

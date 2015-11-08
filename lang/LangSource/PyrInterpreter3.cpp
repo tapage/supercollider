@@ -61,7 +61,7 @@ double timeNow();
 
 int32 timeseed()
 {
-	using namespace chrono;
+	using namespace std::chrono;
 
 	high_resolution_clock::time_point now = high_resolution_clock::now();
 	high_resolution_clock::duration since_epoch = now.time_since_epoch();
@@ -151,7 +151,7 @@ void runAwakeMessage(VMGlobals *g)
 }
 
 void initPyrThread(VMGlobals *g, PyrThread *thread, PyrSlot *func, int stacksize, PyrInt32Array* rgenArray,
-	double beats, double seconds, PyrSlot* clock, bool collect);
+	double beats, double seconds, PyrSlot* clock, bool runGC);
 int32 timeseed();
 
 PyrProcess* newPyrProcess(VMGlobals *g, PyrClass *procclassobj)

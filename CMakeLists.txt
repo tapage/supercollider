@@ -72,15 +72,17 @@ elseif(${CMAKE_CXX_COMPILER} MATCHES icpc)
 
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     set(CMAKE_COMPILER_IS_CLANG 1)
-
-else()
-
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
+    set(CMAKE_COMPILER_IS_CLANG 1)
 endif()
 
 if(APPLE)
 	set_property(DIRECTORY
 		APPEND
 		PROPERTY COMPILE_DEFINITIONS SC_DARWIN)
+	if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+		set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/Install" CACHE STRING "Cmake install path")
+	endif()
 elseif(UNIX)
 	add_definitions(-DSC_DATA_DIR="${CMAKE_INSTALL_PREFIX}/share/SuperCollider")
 endif()
@@ -95,7 +97,7 @@ if(WIN32)
 
 endif()
 
-add_definitions(-DBOOST_CHRONO_HEADER_ONLY)
+add_definitions(-DBOOST_CHRONO_HEADER_ONLY -DBOOST_NO_AUTO_PTR)
 
 #############################################
 # Options
@@ -406,6 +408,15 @@ if(INSTALL_HELP)
 		install( CODE
 					"EXECUTE_PROCESS(COMMAND ln -shF ${CMAKE_CURRENT_SOURCE_DIR}/HelpSource ${CMAKE_INSTALL_PREFIX}/${auxresourcesdir}/HelpSource )" )
 	elseif(NOT APPLE)
+		install(DIRECTORY HelpSource
+			DESTINATION ${auxresourcesdir}
+			REGEX ${SCCLASSLIB_EXCLUDE_REGEX} EXCLUDE
+			PATTERN "*~" EXCLUDE
+			PATTERN "*#" EXCLUDE
+		)
+	endif()
+
+	if(NOT APPLE)
 		install(DIRECTORY HelpSource
 			DESTINATION ${auxresourcesdir}
 			REGEX ${SCCLASSLIB_EXCLUDE_REGEX} EXCLUDE
