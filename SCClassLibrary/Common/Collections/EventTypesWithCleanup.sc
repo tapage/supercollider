@@ -136,12 +136,12 @@ EventTypesWithCleanup {
 
 			freeCue: #{ | server |
 				var bufNum = ~bufNum;
-				server.schedBundleArray.value(~lag, ~timingOffset, server, [["/b_close", bufNum], ["/b_free", bufNum ] ]  );
+				~schedBundleArray.value(~lag, ~timingOffset, server, [['/b_close', bufNum],['/b_free', bufNum ]] );
 			},
 
 			freeCueID: #{ | server |
 				var bufNum = ~bufNum;
-				server.schedBundleArray.value(~lag, ~timingOffset, server, [["/b_close", bufNum], ["/b_free", bufNum ] ]  );
+				~schedBundleArray.value(~lag, ~timingOffset, server, [['/b_close', bufNum], ['/b_free', bufNum ]] );
 				server.bufferAllocator.free(bufNum);
 			},
 
@@ -223,9 +223,17 @@ EventTypesWithCleanup {
 		type = ev[\type];
 		notNode = notNodeType[type] ? true;
 		if (flag || notNode) {
-			 (	parent: ev,
-				type: cleanupTypes[type]
-			).play;
+			if(cleanupTypes[type].notNil,
+				{
+					(
+						parent: ev,
+						type: cleanupTypes[type]
+					).play;
+				},
+				{
+					"Cleanup type for event type '%' not found".format(type).warn;
+				}
+			);
 		}
 	}
 

@@ -695,7 +695,7 @@ void sc_osc_handler::handle_receive_udp(const boost::system::error_code& error,
 void sc_osc_handler::tcp_connection::start(sc_osc_handler * self)
 {
     using namespace boost;
-    typedef boost::integer::big32_t big32_t;
+    typedef boost::endian::big_int32_t big_int32_t;
     asio::ip::tcp::no_delay option(true);
     socket_.set_option(option);
 
@@ -703,10 +703,10 @@ void sc_osc_handler::tcp_connection::start(sc_osc_handler * self)
 
     if (check_password) {
         std::array<char, 32> password;
-        big32_t msglen;
+        big_int32_t msglen;
         for (unsigned int i=0; i!=4; ++i) {
             size_t size = socket_.receive(asio::buffer(&msglen, 4));
-            if (size != sizeof(big32_t))
+            if (size != sizeof(big_int32_t))
                 return;
 
             if (msglen > password.size())
@@ -731,11 +731,15 @@ void sc_osc_handler::tcp_connection::start(sc_osc_handler * self)
 
 void sc_osc_handler::tcp_connection::send(const char *data, size_t length)
 {
-    boost::integer::big32_t len(length);
+    try {
+        boost::endian::big_int32_t len(length);
 
-    socket_.send(boost::asio::buffer(&len, sizeof(len)));
-    size_t written = socket_.send(boost::asio::buffer(data, length));
-    assert(length == written);
+        socket_.send(boost::asio::buffer(&len, sizeof(len)));
+        size_t written = socket_.send(boost::asio::buffer(data, length));
+        assert(length == written);
+    } catch (std::exception const & err) {
+        std::cout << "Exception when sending message over TCP: " << err.what();
+    }
 }
 
 
@@ -811,6 +815,8 @@ void sc_osc_handler::handle_packet_async(const char * data, size_t length,
                                          endpoint_ptr const & endpoint)
 {
     received_packet * p = received_packet::alloc_packet(data, length, endpoint);
+    if( !p )
+        return;
 
     if (dump_osc_packets == 1) {
         osc_received_packet packet (data, length);
@@ -846,6 +852,11 @@ sc_osc_handler::received_packet::alloc_packet(const char * data, size_t length,
 {
     /* received_packet struct and data array are located in one memory chunk */
     void * chunk = received_packet::allocate(sizeof(received_packet) + length);
+    if( !chunk ) {
+        std::cerr << "Memory allocation failure: OSC message not handled\n";
+        return nullptr;
+    }
+
     received_packet * p = (received_packet*)chunk;
     char * cpy = (char*)(chunk) + sizeof(received_packet);
     memcpy(cpy, data, length);
@@ -1993,9 +2004,9 @@ struct completion_message
     void trigger_async(endpoint_ptr endpoint)
     {
         if (size_) {
-            sc_osc_handler::received_packet * p =
-                sc_osc_handler::received_packet::alloc_packet((char*)data_, size_, endpoint);
-            instance->add_sync_callback(p);
+            sc_osc_handler::received_packet * p = sc_osc_handler::received_packet::alloc_packet((char*)data_, size_, endpoint);
+            if( p )
+                instance->add_sync_callback(p);
         }
     }
 
@@ -2287,7 +2298,7 @@ void b_write_nrt_1(uint32_t bufnum, movable_string const & filename, movable_str
 
 void fire_b_write_exception(void)
 {
-    throw std::runtime_error("wrong arguments for /b_allocReadChannel");
+    throw std::runtime_error("wrong arguments for /b_write");
 }
 
 template <bool realtime>
