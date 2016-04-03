@@ -39,6 +39,7 @@ Quarks {
 	}
 	*uninstallQuark { |quark|
 		this.unlink(quark.localPath);
+		this.clearCache;
 	}
 	*clear {
 		this.installed.do({ |quark|
@@ -103,7 +104,7 @@ Quarks {
 					});
 				});
 			});
-			cache = Dictionary.new;
+			this.clearCache();
 			done.value();
 		}, clock: AppClock);
 	}
@@ -115,7 +116,7 @@ Quarks {
 		dir = path.dirname;
 		lines = this.installed.collect({ |quark|
 			var localPath, url="", refspec;
-			localPath = this.asRelativePath(quark.localPath);
+			localPath = this.asRelativePath(quark.localPath, dir);
 			if(Git.isGit(quark.localPath), {
 				url = quark.url;
 				if(Git(quark.localPath).isDirty, {
@@ -139,7 +140,13 @@ Quarks {
 	*update { |name|
 		// by quark name or by supplying a local path
 		// resolving / ~/ ./
-		Git.update(this.quarkNameAsLocalPath(name));
+		// is it a git
+		var localPath = this.quarkNameAsLocalPath(name);
+		if(Git.isGit(localPath), {
+			Git(localPath).pull;
+		}, {
+			("Quark" + name + "was not installed using git, cannot update.").warn;
+		});
 	}
 	*installed {
 		^LanguageConfig.includePaths
@@ -199,6 +206,7 @@ Quarks {
 		};
 		this.link(quark.localPath);
 		(quark.name + "installed").inform;
+		this.clearCache();
 		^true
 	}
 
@@ -395,7 +403,7 @@ Quarks {
 	*asRelativePath { |path, relativeToDir|
 		var d;
 		if(path.beginsWith(relativeToDir), {
-			^"." ++ path.copyToEnd(relativeToDir)
+			^"." ++ path.copyToEnd(relativeToDir.size)
 		});
 		d = Platform.userHomeDir;
 		// ~/path if in home
