@@ -181,7 +181,7 @@ void initializeScheduler()
 }
 #endif // SC_AUDIO_API_COREAUDIO
 
-static void ReportSampleRateList(const char* description, AudioObjectID deviceId, std::vector<AudioValueRange> rates)
+static void ReportSampleRateList(const char* description, std::uint32_t deviceId, std::vector<AudioValueRange> rates)
 {
 	scprintf("Available %s sample rates: (device %x)\n", description, deviceId);
 	for (auto rate : rates) {
@@ -799,7 +799,7 @@ bool SC_CoreAudioDriver::DriverSetup(int* outNumSamplesPerCallback, double* outS
 		auto availableSampleRates = GetAvailableNominalSampleRates(mOutputDevice);
 		
 		#ifdef VERBOSE_DEVICE_LOGGING
-			ReportSampleRateList("output", mOutputDevice, availableSampleRates);
+		ReportSampleRateList("output", (std::uint32_t)mOutputDevice, availableSampleRates);
 		#endif
 		
 		// If we've got two devices, we need to use a sample rate list from both
@@ -809,24 +809,23 @@ bool SC_CoreAudioDriver::DriverSetup(int* outNumSamplesPerCallback, double* outS
 			auto inputSampleRates = GetAvailableNominalSampleRates(mInputDevice);
 
 			#ifdef VERBOSE_DEVICE_LOGGING
-				ReportSampleRateList("input", mInputDevice, inputSampleRates);
+				ReportSampleRateList("input", (std::uint32_t)mInputDevice, inputSampleRates);
 			#endif
 
-			std::vector<AudioValueRange> availableSampleRatesInputOutput(std::min(availableSampleRates.size(), inputSampleRates.size()));
-			auto rateListIter = std::set_union(
+			std::vector<AudioValueRange> availableSampleRatesInputOutput;
+			std::set_union(
 				availableSampleRates.begin(), availableSampleRates.end(),
 				inputSampleRates.begin(), inputSampleRates.end(),
-				availableSampleRatesInputOutput.begin(),
+				std::back_inserter(availableSampleRatesInputOutput),
 				[](const AudioValueRange& lhs, const AudioValueRange& rhs) {
 					return (lhs.mMaximum != rhs.mMaximum) ? (lhs.mMaximum < rhs.mMaximum) : (lhs.mMinimum < rhs.mMinimum);
 				}
 			);
 			
-			availableSampleRatesInputOutput.resize(rateListIter - availableSampleRatesInputOutput.begin());
 			availableSampleRates = availableSampleRatesInputOutput;
 			
 			#ifdef VERBOSE_DEVICE_LOGGING
-				ReportSampleRateList("input and output", mOutputDevice, availableSampleRates);
+				ReportSampleRateList("input and output", (std::uint32_t)mOutputDevice, availableSampleRates);
 			#endif
 		}
 		
